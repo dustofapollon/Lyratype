@@ -210,8 +210,11 @@ textarea { min-height: 120px; line-height: 1.6; }
   border-radius: 10px; padding: 2rem 1.5rem;
   text-align: center; cursor: pointer; position: relative;
   transition: border-color 0.2s, background 0.2s;
+  -webkit-tap-highlight-color: transparent;
 }
-.audio-drop input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+.audio-drop input {
+  display: none; /* hidden, triggered via JS click */
+}
 .audio-drop-icon { font-size: 1.8rem; display: block; margin-bottom: 0.6rem; color: var(--accent-light); }
 .audio-drop-title { font-size: 13px; margin-bottom: 0.2rem; }
 .audio-drop-sub { font-size: 11px; color: var(--muted); }
@@ -463,8 +466,8 @@ footer {
 
   <div class="card">
     <span class="card-label">Audiodatei laden</span>
-    <div class="audio-drop" id="audio-drop">
-      <input type="file" id="audio-input" onchange="loadAudio(this.files[0])">
+    <div class="audio-drop" id="audio-drop" onclick="document.getElementById('audio-input').click()">
+      <input type="file" id="audio-input" accept="audio/*,.mp3,.wav,.aac,.flac,.ogg,.m4a">
       <span class="audio-drop-icon">♪</span>
       <div class="audio-drop-title">Audiodatei auswählen</div>
       <div class="audio-drop-sub">MP3, WAV, AAC, FLAC …</div>
@@ -660,6 +663,10 @@ function escHtml(s) {
 }
 
 // ─── PANEL 2: AUDIO ──────────────────────────────────────────────────────────
+document.getElementById('audio-input').addEventListener('change', function() {
+  if (this.files && this.files[0]) loadAudio(this.files[0]);
+});
+
 function loadAudio(file) {
   if (!file) return;
   audioFileName = file.name;
