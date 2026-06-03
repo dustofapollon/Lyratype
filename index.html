@@ -1,0 +1,963 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Lyratype Mobile</title>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg: #f4f1ec;
+  --surface: #edeae3;
+  --surface2: #e4e0d7;
+  --border: #cdc8be;
+  --accent: #3d5240;
+  --accent-mid: #4a5e4b;
+  --accent-light: #6b8c6e;
+  --accent-faint: rgba(74, 94, 75, 0.08);
+  --text: #1c1a17;
+  --muted: #7a7468;
+  --serif: 'Instrument Serif', Georgia, serif;
+  --mono: 'DM Mono', 'Courier New', monospace;
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+html, body {
+  height: 100%;
+  overflow: hidden;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--mono);
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  /* prevent iOS rubber-band scroll */
+  overscroll-behavior: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* ── SCROLLABLE SETUP SCREENS ───────────────────────── */
+.setup-screen {
+  display: none;
+  flex-direction: column;
+  flex: 1;
+  overflow-y: auto;
+  padding: 1.5rem 1rem 2rem;
+  -webkit-overflow-scrolling: touch;
+}
+.setup-screen.visible { display: flex; }
+
+/* ── TAP SCREEN ─────────────────────────────────────── */
+#tap-screen {
+  display: none;
+  flex-direction: column;
+  flex: 1;
+  overflow: hidden;
+}
+#tap-screen.visible { display: flex; }
+
+/* ── EXPORT SCREEN ──────────────────────────────────── */
+#export-screen {
+  display: none;
+  flex-direction: column;
+  flex: 1;
+  overflow-y: auto;
+  padding: 1.5rem 1rem 2rem;
+}
+#export-screen.visible { display: flex; }
+
+/* ── HEADER ─────────────────────────────────────────── */
+.wordmark {
+  font-family: var(--serif);
+  font-size: 2.4rem;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  color: var(--text);
+  display: flex;
+  align-items: baseline;
+  gap: 0.15em;
+  margin-bottom: 0.25rem;
+}
+.wordmark em { font-style: italic; color: var(--accent-mid); }
+.tagline {
+  font-size: 9px; color: var(--muted);
+  letter-spacing: 0.14em; text-transform: uppercase;
+  margin-bottom: 1.25rem;
+}
+.header-rule {
+  height: 1px;
+  background: linear-gradient(to right, var(--accent-mid), transparent);
+  opacity: 0.35;
+  margin-bottom: 1.5rem;
+}
+
+/* ── STEP INDICATOR ─────────────────────────────────── */
+.steps {
+  display: flex;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  overflow: hidden;
+  margin-bottom: 1.5rem;
+}
+.step {
+  flex: 1; padding: 9px 0;
+  text-align: center; font-size: 10px;
+  letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--muted); border-right: 1px solid var(--border);
+  transition: background 0.2s, color 0.2s;
+}
+.step:last-child { border-right: none; }
+.step.active { background: var(--accent); color: #f4f1ec; }
+.step.done { background: var(--surface2); color: var(--muted); }
+
+/* ── CARDS ──────────────────────────────────────────── */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 1.25rem;
+  margin-bottom: 1rem;
+}
+.card-label {
+  font-size: 9px; letter-spacing: 0.15em;
+  text-transform: uppercase; color: var(--accent-mid);
+  margin-bottom: 0.75rem; display: block;
+}
+
+/* ── INPUTS ─────────────────────────────────────────── */
+textarea, input[type=text], input[type=number] {
+  width: 100%;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 10px 12px;
+  font-family: var(--mono);
+  font-size: 14px;
+  color: var(--text);
+  outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+  resize: none;
+  -webkit-appearance: none;
+}
+textarea:focus, input:focus {
+  border-color: var(--accent-light);
+  box-shadow: 0 0 0 3px rgba(74,94,75,0.1);
+}
+textarea { min-height: 120px; line-height: 1.6; }
+
+.row { display: flex; gap: 10px; align-items: flex-end; margin-top: 0.75rem; }
+.row .field { flex: 1; }
+.field label {
+  font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--muted); display: block; margin-bottom: 5px;
+}
+
+/* ── BUTTONS ────────────────────────────────────────── */
+.btn {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 12px 16px;
+  font-family: var(--mono);
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.15s;
+  letter-spacing: 0.04em;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+.btn-primary { background: var(--accent); color: #f4f1ec; border-color: var(--accent); }
+.btn-primary:active { background: var(--accent-mid); }
+.btn-secondary { background: none; color: var(--muted); }
+.btn-secondary:active { border-color: var(--text); color: var(--text); }
+.btn-danger { background: none; color: #b84040; border-color: #c8a0a0; }
+.btn:disabled { opacity: 0.35; pointer-events: none; }
+
+.actions { display: flex; gap: 8px; margin-top: 1rem; }
+
+/* ── LINES EDITOR ───────────────────────────────────── */
+.lines-editor {
+  display: flex; flex-direction: column; gap: 4px;
+  max-height: 280px; overflow-y: auto; padding-right: 2px;
+}
+.lines-editor::-webkit-scrollbar { width: 3px; }
+.lines-editor::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+.line-item { display: flex; align-items: center; gap: 6px; }
+.line-num { font-size: 10px; color: var(--muted); min-width: 20px; text-align: right; flex-shrink: 0; }
+.line-input { flex: 1; padding: 8px 10px; font-size: 13px; min-height: unset; resize: none; }
+.line-del {
+  background: none; border: none; color: var(--muted);
+  cursor: pointer; font-size: 16px; padding: 4px 8px;
+  border-radius: 4px; line-height: 1; flex-shrink: 0;
+  -webkit-tap-highlight-color: transparent;
+}
+.add-line-btn {
+  margin-top: 8px; background: none;
+  border: 1px dashed var(--border); border-radius: 6px;
+  padding: 9px; font-family: var(--mono); font-size: 11px;
+  color: var(--muted); cursor: pointer; width: 100%;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* ── AUDIO DROP ─────────────────────────────────────── */
+.audio-drop {
+  border: 1.5px dashed var(--border);
+  border-radius: 10px; padding: 2rem 1.5rem;
+  text-align: center; cursor: pointer; position: relative;
+  transition: border-color 0.2s, background 0.2s;
+}
+.audio-drop input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+.audio-drop-icon { font-size: 1.8rem; display: block; margin-bottom: 0.6rem; color: var(--accent-light); }
+.audio-drop-title { font-size: 13px; margin-bottom: 0.2rem; }
+.audio-drop-sub { font-size: 11px; color: var(--muted); }
+
+#audio-loaded {
+  display: none; align-items: center; gap: 10px;
+  padding: 10px 14px; background: var(--surface2);
+  border: 1px solid var(--border); border-radius: 8px; margin-top: 8px;
+}
+#audio-loaded .audio-name { font-size: 12px; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#audio-loaded .audio-dur { font-size: 11px; color: var(--muted); flex-shrink: 0; }
+
+/* ═══════════════════════════════════════════════════════
+   TAP SCREEN LAYOUT — fills full height, no scroll
+   ═══════════════════════════════════════════════════════ */
+
+.tap-top {
+  padding: 0.75rem 1rem 0;
+  flex-shrink: 0;
+}
+
+.tap-progress {
+  height: 3px; background: var(--surface2);
+  border-radius: 2px; overflow: hidden; margin-bottom: 0.5rem;
+}
+.tap-progress-bar {
+  height: 100%; background: var(--accent-mid);
+  border-radius: 2px; transition: width 0.1s linear;
+}
+.tap-time {
+  font-size: 11px; color: var(--muted);
+  display: flex; justify-content: space-between;
+  margin-bottom: 0.5rem;
+}
+.tap-status {
+  font-size: 11px; color: var(--muted);
+  text-align: center; letter-spacing: 0.06em;
+  margin-bottom: 0.5rem;
+}
+.tap-status.recording { color: var(--accent-mid); }
+
+/* lyrics scroll area — takes remaining space */
+.tap-lyrics-area {
+  flex: 1;
+  overflow: hidden;
+  position: relative;
+  padding: 0 1rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.tap-line {
+  padding: 6px 12px; border-radius: 6px;
+  font-size: 13px; line-height: 1.5;
+  transition: all 0.15s; color: var(--muted);
+  margin-bottom: 2px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.tap-line.done { color: var(--border); font-size: 11px; padding: 3px 12px; }
+.tap-line.active {
+  background: var(--text); color: var(--bg);
+  font-size: 17px; padding: 12px 16px; margin: 5px 0;
+  white-space: normal;
+}
+.tap-line.active.held {
+  background: var(--accent); color: #f4f1ec;
+}
+.tap-line.last {
+  background: var(--surface2); color: var(--muted);
+  border: 1px solid var(--border); font-size: 12px;
+  padding: 7px 12px; margin: 2px 0;
+}
+.tap-line.upcoming { color: var(--muted); font-size: 12px; }
+
+/* ── SMALL CONTROLS ROW ─────────────────────────────── */
+.tap-small-controls {
+  display: flex;
+  gap: 8px;
+  padding: 0.5rem 1rem;
+  flex-shrink: 0;
+}
+.tap-small-controls .btn {
+  flex: 1;
+  padding: 9px 8px;
+  font-size: 11px;
+}
+
+/* ── DUAL TOUCH BUTTONS ─────────────────────────────── */
+.touch-buttons {
+  display: flex;
+  gap: 0;
+  flex-shrink: 0;
+  height: 160px;
+  padding-bottom: var(--safe-bottom);
+}
+
+.touch-btn {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  cursor: pointer;
+  border: none;
+  background: var(--surface);
+  border-top: 1.5px solid var(--border);
+  transition: background 0.08s;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  font-family: var(--mono);
+  outline: none;
+  position: relative;
+}
+
+.touch-btn:first-child {
+  border-right: 0.75px solid var(--border);
+  border-radius: 0;
+}
+.touch-btn:last-child {
+  border-left: 0.75px solid var(--border);
+}
+
+.touch-btn-letter {
+  font-family: var(--serif);
+  font-size: 2.8rem;
+  line-height: 1;
+  color: var(--accent-mid);
+  transition: transform 0.08s, color 0.08s;
+}
+.touch-btn-label {
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+  text-align: center;
+  line-height: 1.4;
+  max-width: 120px;
+}
+
+/* pressed states */
+.touch-btn.pressed {
+  background: var(--accent);
+}
+.touch-btn.pressed .touch-btn-letter {
+  color: #f4f1ec;
+  transform: scale(0.92);
+}
+.touch-btn.pressed .touch-btn-label {
+  color: rgba(244,241,236,0.7);
+}
+
+/* inactive (not playing) */
+.touch-btn:disabled,
+.touch-buttons.inactive .touch-btn {
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+/* ── PAUSE OVERLAY ──────────────────────────────────── */
+.pause-overlay {
+  display: none; position: fixed; inset: 0;
+  background: rgba(244, 241, 236, 0.96);
+  backdrop-filter: blur(10px); z-index: 100;
+  align-items: center; justify-content: center;
+  flex-direction: column; gap: 1.25rem;
+  padding: 2rem;
+  text-align: center;
+}
+.pause-overlay.visible { display: flex; }
+.pause-title { font-family: var(--serif); font-size: 2.5rem; color: var(--text); }
+.pause-info { font-size: 12px; color: var(--muted); line-height: 1.8; }
+.pause-overlay .actions { justify-content: center; }
+
+/* ── EXPORT ─────────────────────────────────────────── */
+.stat-row { display: flex; gap: 8px; margin-bottom: 1rem; }
+.stat-chip {
+  flex: 1; background: var(--surface); border: 1px solid var(--border);
+  border-radius: 8px; padding: 10px 6px; text-align: center;
+  border-top: 2px solid var(--accent-light);
+}
+.stat-chip .val { font-family: var(--serif); font-size: 1.8rem; color: var(--accent); line-height: 1; }
+.stat-chip .lbl { font-size: 9px; color: var(--muted); margin-top: 3px; letter-spacing: 0.08em; text-transform: uppercase; }
+
+.export-preview {
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 8px; padding: 12px 14px; font-size: 10px;
+  color: var(--muted); max-height: 160px; overflow-y: auto;
+  white-space: pre; line-height: 1.7; margin-bottom: 1rem;
+  font-family: var(--mono);
+}
+
+footer {
+  margin-top: 2rem; font-size: 9px;
+  color: var(--border); letter-spacing: 0.08em; text-align: center;
+}
+</style>
+</head>
+<body>
+
+<!-- ── SCREEN 1: TEXT ──────────────────────────────────── -->
+<div class="setup-screen visible" id="screen-text">
+  <div class="wordmark">Lyra<em>type</em></div>
+  <p class="tagline">Dust of Apollon · Lyrics → Timecodes → .srt</p>
+  <div class="header-rule"></div>
+
+  <div class="steps">
+    <div class="step active" id="step-1">01 Text</div>
+    <div class="step" id="step-2">02 Audio</div>
+    <div class="step" id="step-3">03 Tap</div>
+    <div class="step" id="step-4">04 Export</div>
+  </div>
+
+  <div class="card">
+    <span class="card-label">Lyrics einfügen</span>
+    <textarea id="lyrics-input" placeholder="Text hier einfügen…" rows="7"></textarea>
+    <div class="row">
+      <div class="field">
+        <label>Max. Zeichen pro Zeile</label>
+        <input type="number" id="char-limit" value="30" min="10" max="120">
+      </div>
+      <button class="btn btn-secondary" onclick="splitLines()">Aufteilen</button>
+    </div>
+  </div>
+
+  <div class="card" id="lines-card" style="display:none">
+    <span class="card-label">Zeilen bearbeiten</span>
+    <div class="lines-editor" id="lines-editor"></div>
+    <button class="add-line-btn" onclick="addLine()">+ Zeile hinzufügen</button>
+    <div class="actions">
+      <button class="btn btn-primary" onclick="goTo(2)">Weiter → Audio</button>
+    </div>
+  </div>
+
+  <footer>// Lyratype Mobile · Dust of Apollon · Made with Claude AI</footer>
+</div>
+
+<!-- ── SCREEN 2: AUDIO ─────────────────────────────────── -->
+<div class="setup-screen" id="screen-audio">
+  <div class="steps">
+    <div class="step done" id="step-1b">01 Text</div>
+    <div class="step active" id="step-2b">02 Audio</div>
+    <div class="step" id="step-3b">03 Tap</div>
+    <div class="step" id="step-4b">04 Export</div>
+  </div>
+
+  <div class="card">
+    <span class="card-label">Audiodatei laden</span>
+    <div class="audio-drop" id="audio-drop">
+      <input type="file" id="audio-input" accept="audio/*" onchange="loadAudio(this.files[0])">
+      <span class="audio-drop-icon">♪</span>
+      <div class="audio-drop-title">Audiodatei auswählen</div>
+      <div class="audio-drop-sub">MP3, WAV, AAC, FLAC …</div>
+    </div>
+    <div id="audio-loaded">
+      <span class="audio-name" id="audio-name">—</span>
+      <span class="audio-dur" id="audio-dur">—</span>
+    </div>
+  </div>
+  <div class="actions">
+    <button class="btn btn-secondary" onclick="goTo(1)">← Zurück</button>
+    <button class="btn btn-primary" id="btn-start-tap" onclick="goTo(3)" disabled>Weiter → Tappen</button>
+  </div>
+</div>
+
+<!-- ── SCREEN 3: TAP (full-height, no scroll) ─────────── -->
+<div id="tap-screen">
+
+  <div class="tap-top">
+    <div class="tap-progress"><div class="tap-progress-bar" id="tap-progress-bar" style="width:0%"></div></div>
+    <div class="tap-time">
+      <span id="tap-current">0:00.000</span>
+      <span id="tap-total">0:00</span>
+    </div>
+    <div class="tap-status" id="tap-status">Bereit — drücke Play</div>
+  </div>
+
+  <div class="tap-lyrics-area">
+    <div id="tap-lines-view"></div>
+  </div>
+
+  <div class="tap-small-controls">
+    <button class="btn btn-primary" id="btn-play-pause" onclick="togglePlay()">▶ Play</button>
+    <button class="btn btn-secondary" onclick="undoLast()">↩ Undo</button>
+    <button class="btn btn-secondary" onclick="pauseSession()">⏸ Pause</button>
+    <button class="btn btn-secondary" onclick="goTo(2)" style="padding:9px 8px">← Audio</button>
+  </div>
+
+  <!-- THE TWO BIG TOUCH BUTTONS -->
+  <div class="touch-buttons inactive" id="touch-buttons">
+    <button class="touch-btn" id="btn-left"
+      ontouchstart="touchDown('left', $event)" ontouchend="touchUp('left')"
+      onmousedown="touchDown('left')" onmouseup="touchUp('left')">
+      <span class="touch-btn-letter">L</span>
+      <span class="touch-btn-label">Halten<br>= Zeile aktiv</span>
+    </button>
+    <button class="touch-btn" id="btn-right"
+      ontouchstart="touchDown('right')" ontouchend="touchUp('right')"
+      onmousedown="touchDown('right')" onmouseup="touchUp('right')">
+      <span class="touch-btn-letter">R</span>
+      <span class="touch-btn-label">Wechseln<br>= nächste Zeile</span>
+    </button>
+  </div>
+
+</div>
+
+<!-- ── PAUSE OVERLAY ───────────────────────────────────── -->
+<div class="pause-overlay" id="pause-overlay">
+  <div class="pause-title">Pausiert</div>
+  <div class="pause-info">
+    Audio gestoppt · Timecodes werden nicht aufgezeichnet<br>
+    Zeile <strong id="pause-line">—</strong> von <strong id="pause-total">—</strong> abgeschlossen
+  </div>
+  <div class="actions">
+    <button class="btn btn-primary" onclick="resumeSession()">▶ Weiter</button>
+    <button class="btn btn-secondary" onclick="finishTapping()">Fertig → Export</button>
+  </div>
+</div>
+
+<!-- ── SCREEN 4: EXPORT ────────────────────────────────── -->
+<div class="setup-screen" id="screen-export">
+  <div class="steps">
+    <div class="step done">01 Text</div>
+    <div class="step done">02 Audio</div>
+    <div class="step done">03 Tap</div>
+    <div class="step active">04 Export</div>
+  </div>
+
+  <div class="stat-row" id="export-stats"></div>
+
+  <div class="card">
+    <span class="card-label">SRT Vorschau</span>
+    <div class="export-preview" id="export-preview"></div>
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-primary" onclick="downloadSRT()" style="flex:1">↓ SRT downloaden</button>
+      <button class="btn btn-secondary" onclick="goTo(3)">← Tappen</button>
+    </div>
+  </div>
+
+  <footer>// Lyratype Mobile · Dust of Apollon · Made with Claude AI</footer>
+</div>
+
+<audio id="player"></audio>
+
+<script>
+// ─── STATE ────────────────────────────────────────────────────────────────────
+let lines       = [];
+let taps        = [];
+let tapStart    = null;
+let currentLine = 0;
+let audioFileName = '';
+let isPlaying   = false;
+let isPaused    = false;
+let rafId       = null;
+
+// Touch button state — mirrors J/K logic but as left/right
+// Holding either button = active block
+// Pressing the OTHER while one is held = close + start next
+let heldSide = null; // 'left' | 'right' | null
+
+const player = document.getElementById('player');
+
+// ─── NAVIGATION ──────────────────────────────────────────────────────────────
+function goTo(n) {
+  document.getElementById('screen-text').classList.toggle('visible', n === 1);
+  document.getElementById('screen-audio').classList.toggle('visible', n === 2);
+  document.getElementById('tap-screen').classList.toggle('visible', n === 3);
+  document.getElementById('screen-export').classList.toggle('visible', n === 4);
+
+  updateSteps(n);
+
+  if (n === 3) initTapScreen();
+  if (n === 4) buildExport();
+}
+
+function updateSteps(n) {
+  // Update step indicators across all screens that have them
+  // (each setup screen has its own steps div — we just update by ID)
+  const ids = ['step-1','step-2','step-3','step-4'];
+  ids.forEach((id, i) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.classList.toggle('active', i + 1 === n);
+    el.classList.toggle('done', i + 1 < n);
+  });
+}
+
+// ─── PANEL 1: TEXT ────────────────────────────────────────────────────────────
+function splitLines() {
+  const text = document.getElementById('lyrics-input').value.trim();
+  if (!text) return;
+  const limit = parseInt(document.getElementById('char-limit').value) || 30;
+
+  const segments = text.split(/\n+/);
+  const result = [];
+
+  for (const seg of segments) {
+    const words = seg.trim().split(/\s+/).filter(Boolean);
+    if (!words.length) continue;
+    let current = '';
+    for (const word of words) {
+      if (!current) {
+        current = word;
+      } else if ((current + ' ' + word).length <= limit) {
+        current += ' ' + word;
+      } else {
+        result.push(current);
+        current = word;
+      }
+    }
+    if (current) result.push(current);
+  }
+
+  lines = result;
+  renderLinesEditor();
+  document.getElementById('lines-card').style.display = 'block';
+}
+
+function renderLinesEditor() {
+  const el = document.getElementById('lines-editor');
+  el.innerHTML = lines.map((l, i) => `
+    <div class="line-item" data-idx="${i}">
+      <span class="line-num">${i + 1}</span>
+      <input class="line-input" type="text" value="${escHtml(l)}"
+        oninput="lines[${i}]=this.value">
+      <button class="line-del" onclick="deleteLine(${i})">×</button>
+    </div>`).join('');
+}
+
+function deleteLine(i) { lines.splice(i, 1); renderLinesEditor(); }
+
+function addLine() {
+  lines.push('');
+  renderLinesEditor();
+  setTimeout(() => {
+    const inputs = document.querySelectorAll('.line-input');
+    inputs[inputs.length - 1]?.focus();
+  }, 0);
+}
+
+function escHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ─── PANEL 2: AUDIO ──────────────────────────────────────────────────────────
+function loadAudio(file) {
+  if (!file) return;
+  audioFileName = file.name;
+  const url = URL.createObjectURL(file);
+  player.src = url;
+  player.load();
+  player.onloadedmetadata = () => {
+    document.getElementById('audio-name').textContent = file.name;
+    document.getElementById('audio-dur').textContent  = fmtTime(player.duration);
+    document.getElementById('audio-loaded').style.display = 'flex';
+    document.getElementById('btn-start-tap').disabled = false;
+  };
+}
+
+// ─── PANEL 3: TAP ────────────────────────────────────────────────────────────
+function initTapScreen() {
+  // sync edits
+  document.querySelectorAll('.line-input').forEach((inp, i) => { lines[i] = inp.value; });
+  lines = lines.filter(l => l.trim());
+
+  taps        = [];
+  currentLine = 0;
+  tapStart    = null;
+  heldSide    = null;
+  isPlaying   = false;
+  isPaused    = false;
+
+  document.getElementById('btn-play-pause').textContent = '▶ Play';
+  document.getElementById('tap-status').textContent     = 'Bereit — drücke Play';
+  document.getElementById('tap-status').className       = 'tap-status';
+  document.getElementById('tap-total').textContent      = fmtTime(player.duration || 0);
+  document.getElementById('tap-progress-bar').style.width = '0%';
+  document.getElementById('touch-buttons').classList.add('inactive');
+
+  renderTapLines();
+  player.currentTime = 0;
+}
+
+function renderTapLines() {
+  const el = document.getElementById('tap-lines-view');
+  const visible = [];
+  const showLast = !isPlaying && currentLine > 0;
+  for (let i = Math.max(0, currentLine - 2); i < Math.min(lines.length, currentLine + 4); i++) {
+    let cls = 'tap-line';
+    if (i < currentLine - 1) {
+      cls += ' done';
+    } else if (i === currentLine - 1) {
+      cls += showLast ? ' active last' : ' done';
+    } else if (i === currentLine) {
+      cls += ' active' + (tapStart !== null ? ' held' : '');
+    } else {
+      cls += ' upcoming';
+    }
+    visible.push(`<div class="${cls}">${escHtml(lines[i])}</div>`);
+  }
+  el.innerHTML = visible.join('');
+}
+
+function togglePlay() {
+  if (!isPlaying) {
+    player.play();
+    isPlaying = true;
+    document.getElementById('btn-play-pause').textContent = '⏹ Stop';
+    document.getElementById('tap-status').textContent     = 'Aufzeichnung läuft…';
+    document.getElementById('tap-status').className       = 'tap-status recording';
+    document.getElementById('touch-buttons').classList.remove('inactive');
+    startRaf();
+  } else {
+    player.pause();
+    isPlaying = false;
+    document.getElementById('btn-play-pause').textContent = '▶ Play';
+    document.getElementById('tap-status').textContent     = 'Gestoppt';
+    document.getElementById('tap-status').className       = 'tap-status';
+    document.getElementById('touch-buttons').classList.add('inactive');
+    stopRaf();
+  }
+}
+
+function startRaf() {
+  function tick() {
+    const t   = player.currentTime;
+    const dur = player.duration || 1;
+    document.getElementById('tap-current').textContent          = fmtTimePrecise(t);
+    document.getElementById('tap-progress-bar').style.width = (t / dur * 100) + '%';
+    rafId = requestAnimationFrame(tick);
+  }
+  rafId = requestAnimationFrame(tick);
+}
+
+function stopRaf() {
+  if (rafId) { cancelAnimationFrame(rafId); rafId = null; }
+}
+
+// ─── TOUCH BUTTON LOGIC ───────────────────────────────────────────────────────
+// Same two-finger logic as J/K: hold one = start block, press other = end + start next
+
+function touchDown(side) {
+  if (!isPlaying || isPaused) return;
+  const now = player.currentTime;
+
+  if (heldSide === null) {
+    // Nothing held — start new block
+    if (currentLine >= lines.length) return;
+    heldSide = side;
+    tapStart = now;
+    document.getElementById(side === 'left' ? 'btn-left' : 'btn-right').classList.add('pressed');
+    renderTapLines();
+  } else if (side !== heldSide) {
+    // Other side pressed while one is held → close + start next
+    const otherBtn = document.getElementById(heldSide === 'left' ? 'btn-left' : 'btn-right');
+    otherBtn.classList.remove('pressed');
+
+    if (tapStart !== null) {
+      taps.push({ text: lines[currentLine], start: tapStart, end: now });
+      currentLine++;
+      if (currentLine >= lines.length) {
+        heldSide = null; tapStart = null;
+        finishTapping(); return;
+      }
+    }
+    // Start new block immediately with the new side
+    heldSide = side;
+    tapStart = now;
+    document.getElementById(side === 'left' ? 'btn-left' : 'btn-right').classList.add('pressed');
+    renderTapLines();
+  }
+}
+
+function touchUp(side) {
+  if (!isPlaying || isPaused) return;
+  if (side !== heldSide) return;
+
+  document.getElementById(side === 'left' ? 'btn-left' : 'btn-right').classList.remove('pressed');
+  heldSide = null;
+
+  if (tapStart !== null) {
+    const tapEnd = player.currentTime;
+    taps.push({ text: lines[currentLine], start: tapStart, end: tapEnd });
+    tapStart = null;
+    currentLine++;
+    if (currentLine >= lines.length) { finishTapping(); return; }
+    renderTapLines();
+  }
+}
+
+function undoLast() {
+  if (taps.length === 0) return;
+  taps.pop();
+  currentLine = Math.max(0, currentLine - 1);
+  tapStart  = null;
+  heldSide  = null;
+  document.getElementById('btn-left').classList.remove('pressed');
+  document.getElementById('btn-right').classList.remove('pressed');
+  if (isPlaying) {
+    player.pause(); isPlaying = false; stopRaf();
+    document.getElementById('btn-play-pause').textContent = '▶ Play';
+    document.getElementById('tap-status').textContent     = 'Rückgängig — drücke Play';
+    document.getElementById('tap-status').className       = 'tap-status';
+    document.getElementById('touch-buttons').classList.add('inactive');
+  }
+  if (taps.length > 0) player.currentTime = taps[taps.length - 1].end;
+  renderTapLines();
+}
+
+function pauseSession() {
+  if (!isPlaying) return;
+  player.pause(); isPlaying = false; isPaused = true;
+  stopRaf(); tapStart = null; heldSide = null;
+  document.getElementById('btn-left').classList.remove('pressed');
+  document.getElementById('btn-right').classList.remove('pressed');
+  document.getElementById('touch-buttons').classList.add('inactive');
+  document.getElementById('pause-line').textContent  = taps.length;
+  document.getElementById('pause-total').textContent = lines.length;
+  document.getElementById('pause-overlay').classList.add('visible');
+  document.getElementById('btn-play-pause').textContent = '▶ Play';
+}
+
+function resumeSession() {
+  isPaused = false;
+  document.getElementById('pause-overlay').classList.remove('visible');
+  document.getElementById('tap-status').textContent = 'Bereit — drücke Play';
+  renderTapLines();
+}
+
+function finishTapping() {
+  player.pause(); isPlaying = false;
+  stopRaf(); isPaused = false;
+  document.getElementById('pause-overlay').classList.remove('visible');
+  document.getElementById('touch-buttons').classList.add('inactive');
+  goTo(4);
+}
+
+// Keyboard fallback (for desktop testing)
+let heldKey = null;
+document.addEventListener('keydown', e => {
+  if (e.code === 'Escape') { pauseSession(); return; }
+  if (!isPlaying || isPaused || e.repeat) return;
+  if (e.code !== 'KeyJ' && e.code !== 'KeyK') return;
+  const side = e.code === 'KeyJ' ? 'left' : 'right';
+  if (heldKey === null) {
+    heldKey = e.code;
+    touchDown(side);
+  } else if (e.code !== heldKey) {
+    heldKey = e.code;
+    touchDown(side);
+  }
+});
+document.addEventListener('keyup', e => {
+  if (!isPlaying || isPaused) return;
+  if (e.code !== 'KeyJ' && e.code !== 'KeyK') return;
+  if (e.code === heldKey) {
+    heldKey = null;
+    const side = e.code === 'KeyJ' ? 'left' : 'right';
+    touchUp(side);
+  }
+});
+
+// Prevent default touch scrolling on the tap screen
+document.getElementById('tap-screen').addEventListener('touchmove', e => {
+  e.preventDefault();
+}, { passive: false });
+
+// ─── PANEL 4: EXPORT ─────────────────────────────────────────────────────────
+function floor30(ms) {
+  const frame = Math.floor(ms * 30 / 1000);
+  return Math.floor(frame * 1000 / 30);
+}
+
+function toSRTts(totalMs) {
+  totalMs = Math.max(0, Math.round(totalMs));
+  const h = Math.floor(totalMs / 3600000); totalMs %= 3600000;
+  const m = Math.floor(totalMs / 60000);   totalMs %= 60000;
+  const s = Math.floor(totalMs / 1000);    totalMs %= 1000;
+  return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')},${String(totalMs).padStart(3,'0')}`;
+}
+
+function buildExport() {
+  const processed = taps.map(t => ({ ...t }));
+  const GAP_THRESHOLD = 1.5;
+  for (let i = 0; i < processed.length - 1; i++) {
+    const gap = processed[i + 1].start - processed[i].end;
+    if (gap > 0 && gap < GAP_THRESHOLD) processed[i].end = processed[i + 1].start;
+  }
+
+  let closedCount = 0;
+  const subs = processed.map(t => ({
+    text:  t.text,
+    start: floor30(t.start * 1000),
+    end:   floor30(t.end   * 1000),
+  }));
+
+  for (let i = 0; i < subs.length - 1; i++) {
+    const gap = subs[i+1].start - subs[i].end;
+    if (gap > 0 && gap <= 1000) { subs[i].end = subs[i+1].start; closedCount++; }
+  }
+
+  const srtLines = subs.map((s, i) =>
+    `${i+1}\n${toSRTts(s.start)} --> ${toSRTts(s.end)}\n${s.text}`
+  ).join('\n\n') + '\n';
+
+  const bigGaps = subs.filter((s, i) =>
+    i < subs.length - 1 && subs[i+1].start - s.end > 1000
+  ).length;
+
+  document.getElementById('export-stats').innerHTML = `
+    <div class="stat-chip"><div class="val">${subs.length}</div><div class="lbl">Zeilen</div></div>
+    <div class="stat-chip"><div class="val">${closedCount}</div><div class="lbl">Lücken zu</div></div>
+    <div class="stat-chip"><div class="val">${bigGaps}</div><div class="lbl">Musik-Pausen</div></div>`;
+
+  document.getElementById('export-preview').textContent =
+    srtLines.split('\n').slice(0, 24).join('\n') + '\n…';
+
+  window._srtOutput = srtLines;
+
+  // Direct panel switch (already called from goTo(4))
+  document.getElementById('screen-export').classList.add('visible');
+}
+
+function downloadSRT() {
+  const name = audioFileName.replace(/\.[^.]+$/, '') || 'lyrics';
+  const blob  = new Blob([window._srtOutput], { type: 'text/plain;charset=utf-8' });
+  const url   = URL.createObjectURL(blob);
+  const a     = document.createElement('a');
+  a.href = url; a.download = name + '_tapped.srt'; a.click();
+}
+
+// ─── UTILS ───────────────────────────────────────────────────────────────────
+function fmtTime(s) {
+  const m = Math.floor(s / 60);
+  return `${m}:${String(Math.floor(s % 60)).padStart(2,'0')}`;
+}
+function fmtTimePrecise(s) {
+  const m   = Math.floor(s / 60);
+  const sec = (s % 60).toFixed(3);
+  return `${m}:${sec.padStart(6,'0')}`;
+}
+
+player.addEventListener('ended', () => { if (isPlaying) finishTapping(); });
+</script>
+</body>
+</html>
